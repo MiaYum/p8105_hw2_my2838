@@ -1,7 +1,5 @@
 ---
-title: "Untitled"
-author: "Mia Yu"
-date: "2023-10-01"
+title: "P8105_hw2_my2838"
 output: github_document
 ---
 
@@ -70,3 +68,122 @@ final_df =
   separate(date, into = c("year","month"), sep = "-") |>
   select( year, month, everything())
 ```
+
+
+# Problem 2
+
+Read and clean the Mr. Trash Wheel sheet.
+
+```{r}
+mr_trash_df = 
+  read_excel("data/202309 Trash Wheel Collection Data.xlsx", sheet = "Mr. Trash Wheel", skip = 1, range = cell_cols('A:N')) |>
+  janitor::clean_names()  |>
+  drop_na(dumpster) |>
+  mutate(
+    year = as.integer(year),
+    wheel = "mr")
+```
+
+Use a similar process to import, clean, and organize the data for Professor Trash Wheel and Gwynnda.
+
+```{r}
+pro_trash_df = 
+  read_excel("data/202309 Trash Wheel Collection Data.xlsx", sheet = "Professor Trash Wheel", skip = 1, range = cell_cols('A:M')) |>
+  janitor::clean_names()  |>
+  drop_na(dumpster) |>
+  mutate(
+    year = as.integer(year),
+    wheel = "pro")
+
+gwy_trash_df = 
+  read_excel("data/202309 Trash Wheel Collection Data.xlsx", sheet = "Gwynnda Trash Wheel", skip = 1, range = cell_cols('A:K')) |>
+  janitor::clean_names()  |>
+  drop_na(dumpster) |>
+  mutate(
+    year = as.integer(year),
+    wheel = "gwy")
+```
+
+Combine these dataframe, and add an additional variable `homes_powered`.
+
+```{r}
+trash_df = 
+  bind_rows(mr_trash_df, pro_trash_df, gwy_trash_df) |>
+  mutate(homes_powered = 500* weight_tons /30 ) 
+```
+
+*The combined master data sets for trash wheel has `r nrow(trash_df)` rows and `r ncol(trash_df)` columns. *
+
+*The total weight of trash collected by Professor trash wheel is `r pull(pro_trash_df,weight_tons) |> sum()` tons.*
+
+*The total number of cigarette butts collected by Gwynnda in July of 2021 is `r filter(gwy_trash_df, year == 2021 & month == "July") |> pull(cigarette_butts) |> sum() `.*
+
+
+
+# Problem 3
+
+Import, clean, and tidy the dataset of baseline demographics.
+
+```{r}
+
+baseline =
+  read_csv("data/data_mci/MCI_baseline.csv", skip = 1, show_col_types = FALSE) |>
+  janitor::clean_names() |>
+  mutate(
+      sex = case_match(
+      sex,
+      1 ~ "male",
+      0 ~ "female"),
+      apoe4 = as.logical(apoe4),
+      current_age = as.numeric(current_age),
+      age_at_onset = as.numeric(age_at_onset)
+  ) 
+```
+
+*There are `r nrow(baseline)` participants were recruited, and `r  drop_na(baseline) |> nrow() ` develop MCI.*
+
+*The average baseline age is `r drop_na(baseline, age_at_onset) |> pull(age_at_onset) |> mean()`*
+
+*The proportion of women in the study are APOE4 carriers is `r nrow(subset(baseline, sex == "female" & apoe4 == 1))/nrow(subset(baseline, sex == "female"))`*
+
+
+
+Import, clean, and tidy the dataset of longitudinally observed biomarker values.
+
+```{r}
+amyloid =
+  read_csv("data/data_mci/mci_amyloid.csv", skip = 1, show_col_types = FALSE) |>
+  janitor::clean_names() |>
+  drop_na(baseline) |>
+  rename("id" = "study_id")
+```
+
+*When import this dataset, I need to drop the NA in baseline, and rename the variable "Study Id" to further match the same variable in baseline dataset.*
+
+
+
+Combine two datasets to keep all the participants appear.
+
+```{r}
+full_data = full_join(amyloid, baseline, by = "id")
+```
+
+Combine two datasets to keep participants who only appear in both datasets.
+
+```{r}
+inn_data = inner_join(amyloid, baseline, by = "id")
+```
+
+
+*We have `r nrow(full_data)` participants in the research. But only `r nrow(inn_data)` participants appear in both datasets, which means there are `r nrow(full_data)-nrow(inn_data)` participants appear in only the baseline or amyloid datasets.*
+
+*The resulting dataset of participants who appear in both baseline and amyloid datasets have `r nrow(inn_data)` rows and `r ncol(inn_data)` columns.*
+
+
+
+Let's save the result.
+
+```{r}
+write.csv(inn_data, file="both_amyloid_baseline.csv")
+```
+
