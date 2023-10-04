@@ -22,7 +22,8 @@ pols_df =
     month = month(as.integer(month),label = TRUE),
     gov_president = gov_gop + gov_dem,
     sen_president = sen_gop + sen_dem,
-    rep_president = rep_gop + rep_dem,
+    rep_president = rep_gop + rep_dem) |>
+  mutate(
     date = paste(year, month, sep="-")
   ) |>
   select(-ends_with("dem"),-ends_with("gop"),-day,-year,-month)
@@ -129,6 +130,7 @@ Import, clean, and tidy the dataset of baseline demographics.
 baseline =
   read_csv("data/data_mci/MCI_baseline.csv", skip = 1, show_col_types = FALSE) |>
   janitor::clean_names() |>
+  filter(current_age < age_at_onset | age_at_onset == ".") |>
   mutate(
       sex = case_match(
       sex,
@@ -142,7 +144,7 @@ baseline =
 
 *There are `r nrow(baseline)` participants were recruited, and `r  drop_na(baseline) |> nrow() ` develop MCI.*
 
-*The average baseline age is `r drop_na(baseline, age_at_onset) |> pull(age_at_onset) |> mean()`*
+*The average baseline age is `r pull(current_age) |> mean()`*
 
 *The proportion of women in the study are APOE4 carriers is `r nrow(subset(baseline, sex == "female" & apoe4 == 1))/nrow(subset(baseline, sex == "female"))`*
 
